@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div id="getUserDetails">
+        <h2>HI user, lets get you connected</h2>
+        <form>
+            <label>Please state your name</label>
+            <input type="text" name="name" id="name" minlength="5" required>
+            <label>Please state your email</label>
+            <input type="email" name="email" id="email" minlength="5" required>
+            <button type="submit" id="submit">Submit</button>
+        </form>
+    </div>
+    <div id="video-join-dashboard" style="display: none;">
+        <center>
+            <button id="startNewChannel">Create a new link</button>
+            <button id="joinNewChannel">Join a existing link</button>
+            <div id="show-existing-join" style="display: none;">
+                <label>Enter Meeting ID:</label>
+                <input type="text" id="existingMeetingId" name="existingMeetingId" required>
+                <label>Enter Meeting password:</label>
+                <input type="password" id="existingMeetingPassword" name="existingMeetingPassword" required>
+                <button type="submit" id="video-dashboard-submit">Submit</button>
+            </div>
+            <button id="joinUser">Join a existing User</button>
+            <div id="show-existing-user-join" style="display: none;">
+                <label>Enter Meeting ID:</label>
+                <input type="text" id="existingUserId" name="existingUserId" required>
+                <button type="submit" id="video-dashboard-submit-user">Submit</button>
+            </div>
+        </center>
+    </div>
+    <div id="meeting_room" style="display:none">
+        <div id="video_container">
+            <!-- <video id="video_players" autoplay playsinline></video> -->
+        </div>
+        <div id="meeting_participants_div"></div>
+        <div id="chat_box_div"></div>
+        <div id="meeting_info_div"></div>
+        <div id="meeting_controls">
+            <!-- <button type="button" class="video_toolbar_button" id="start_recording_video">Start recoding</button> -->
+            <!-- <button type="button" class="video_toolbar_button" id="pause_recording_video">Pause Recording</button> -->
+            <!-- <button type="button" class="video_toolbar_button" id="finish_recording_video">Finish Recoding</button> -->
+            <!-- <button type="button" class="video_toolbar_button" id="start_video" disabled>Start Video</button> -->
+            <button type="button" class="video_toolbar_button" id="stop_video">Stop Video</button>
+            <!-- <button type="button" class="video_toolbar_button" id="start_audio" disabled>Start Audio</button> -->
+            <button type="button" class="video_toolbar_button" id="stop_audio">Stop Audio</button>
+            <!-- <button type="button" class="video_toolbar_button" id="exit_room">Exit Conference</button> -->
+        </div>
+        <div id="chat_content">
+            <input id="new_message" type="text" placeholder="Start Messaging"/>
+            <button id="new_chat">Send Message</button>
+        </div>
+    </div>
+</body>
+<script src="./index.js" type="module"></script>
+<style>
+    div#video_container {
+     position: absolute;
+     width: 99%;
+     height: calc(100% - 40px);
+     margin: 5px;
+     background: black;
+     border-radius: 15px;
+ }
+ div#meeting_controls {
+     position: absolute;
+     bottom: 20px;
+     left: calc(100% - 80%);
+     margin: 0px;
+ }
+ div#chat_content {
+     bottom: 20px;
+     right: 10%;
+     position: absolute;
+ }
+ button.video_toolbar_button {
+     border: 2px solid #5ae15a;
+     background-color: transparent;
+     color: #2c9f2c;
+     padding: 10px 10px;
+     cursor: pointer;
+     font-size: 16px;
+ }
+ button.video_toolbar_button:hover {
+     background: green;
+     color: white;
+ }
+ button.video_toolbar_button:disabled {
+     color: #181a1b;
+     background-color: #3a3636d1;
+     border: 2px solid gray;
+ }
+ </style>
+</html>

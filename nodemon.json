@@ -1,0 +1,4 @@
+{
+    "exec":"cls && node --inspect app.js && cls",
+    "ignore":["node_modules"]
+}
