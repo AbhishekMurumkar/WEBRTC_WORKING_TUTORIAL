@@ -14,19 +14,21 @@ let store = {
     screenSharingStream: null
 };
 let connectedUsers = [];
-let peerConnections = [];
-console.log("socketId: " + socket.id);
+let peerConnections = {};
 
 socket.on("connect", function () {
     console.log("socketId: " + socket.id);
+    connectedUsers.push(socket.id);
     store.socketId = socket.id;
 });
 socket.on("pre-offer", data => {
     console.log("pre-offer", data);
     let mydata = {
+        ...data,
         callType: 'CALL_ACCEPTED',
         source: data.destination,
-        destination: data.source
+        destination: data.source,
+        socketId: socket.id
     }
     console.log("fired pre-offer-answer", mydata)
     createPeerConnection(data);//destination
@@ -63,51 +65,67 @@ socket.on("join-user-accepted", data => {
 })
 let gotCandidates = 0;
 socket.on("webrtc-signalling", async (data) => {
-    let peerConnection = peerConnections[peerConnections.length - 1];
-    console.log("webrtc-signalling",data.type);
-    if (data.type == 'OFFER') {
-        console.log("GOT - webrtc-signalling - OFFER");
-
-        console.log("About to set remote description: offer :",data.offer, peerConnection)
-        await peerConnection.setRemoteDescription(data.offer);
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        console.log("fired - webrtc-signalling - ANSWER");
-        socket.emit('webrtc-signalling', {
-            type: 'ANSWER',
-            answer: answer,
-            source: data.destination,
-            destination: data.source
-        });
-    }
-    else if (data.type === 'ANSWER') {
-        console.log("GOT - webrtc-signalling - ANSWER");
-        console.log(peerConnection, data);
-        try {
-            console.log("About to set remote description: answer :",data.offer, peerConnection)
-            await peerConnection.setRemoteDescription(data.answer);
-        } catch (err) {
-            console.log("unable to set remote answer");
-            console.log(err, err.stack);
+    try{
+        console.log("webrtc-signalling",data.type,data);
+        let peerConnection = null;
+        if(peerConnections[data.socketId]){
+            peerConnection = peerConnections[data.socketId];
+        }else{
+            await createPeerConnection(data);
+            peerConnection = peerConnections[data.socketId];
         }
-        console.log("SET ANSWER COMPLETE");
-    }
-    else if (data.type === 'ICE_CANDIDATE') {
-        gotCandidates++;
-        console.log("GOT - webrtc-signalling - ICE_CANDIDATE " + gotCandidates);
-        await peerConnection.addIceCandidate(data.candidate);
-    } else {
-        console.log("err", data);
+        console.log("->found peerConnection for "+data.socketId+":"+Boolean(peerConnection));
+        if (data.type == 'OFFER') {
+            console.log("GOT - webrtc-signalling - OFFER :: About to set remote description: offer");
+            await peerConnection.setRemoteDescription(data.offer);
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            console.log("fired - webrtc-signalling - ANSWER");
+            socket.emit('webrtc-signalling', {
+                ...data,
+                type: 'ANSWER',
+                answer: answer,
+                source: data.destination,
+                destination: data.source,
+                socketId: socket.id
+            });
+        }
+        else if (data.type === 'ANSWER') {
+            console.log("GOT - webrtc-signalling - ANSWER :: About to set remote description: answer");
+            try {
+                await peerConnection.setRemoteDescription(data.answer);
+                console.log("SET ANSWER COMPLETE");
+            } catch (err) {
+                console.log("unable to set remote answer");
+                console.log(err, err.stack);
+            }
+        }
+        else if (data.type === 'ICE_CANDIDATE') {
+            gotCandidates++;
+            console.log("GOT - webrtc-signalling - ICE_CANDIDATE " + gotCandidates);
+            await peerConnection.addIceCandidate(data.candidate);
+        } else {
+            console.log("err", data);
+        }
+    }catch(err){
+        console.log("Error in receiving webrtc-signalling")
+        console.log(err, err.stack);
+        console.log(data);
     }
 })
 socket.on("user-joined",user=>{
     console.log("user-joined",user);
+    // document.getElementById("video_container").innerHTML = "";
     if(user.name!=UserDetails.name){
-        socket.emit('pre-offer', {
+        let myData = {
             callType: 'PERSONAL_VOICE CALL',
             source: socket.id,
-            destination: user.roomId
-        })
+            destination: user.socketId,
+            socketId: socket.id
+        }
+        console.log("fired pre-offer",myData);
+        socket.emit('pre-offer', myData)
+        connectedUsers.push(user.socketId);
     }
 })
 
@@ -129,25 +147,29 @@ document.getElementById("video-dashboard-submit-user").addEventListener("click",
     });
 })
 function throwOffer(data) {
-    console.log("fired pre-offer");
-    socket.emit('pre-offer', {
+    let mydata = {
         callType: 'PERSONAL_VOICE CALL',
         source: data.destination,
         destination: data.source,
         channelId: data?.channelId || null,
-    })
+    }
+    console.log("fired pre-offer",mydata);
+    socket.emit('pre-offer', mydata);
 }
 async function throwWebRtcOffer(data){
-    console.log("fired - webrtc-signalling - OFFER", data);
-    let peerConnection = peerConnections[peerConnections.length - 1];
+    let peerConnection = peerConnections[data.socketId];
     let offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    socket.emit('webrtc-signalling', {
+    let mydata = {
+        ...data,
         offer: offer,
         source: data.destination,
         destination: data.source,
-        type: 'OFFER'
-    });
+        type: 'OFFER',
+        socketId: socket.id
+    }
+    console.log("fired - webrtc-signalling - OFFER", mydata);
+    socket.emit('webrtc-signalling', mydata);
 }
 
 document.getElementById("startNewChannel").addEventListener("click", (event) => {
@@ -168,7 +190,9 @@ document.getElementById("startNewChannel").addEventListener("click", (event) => 
             console.log(data)
             data = JSON.parse(atob(data));
             console.log(data)
-            startSelfStream();
+            document.getElementById('MymeetingId').value = data.id;
+            document.getElementById('MymeetingPass').value = data.password;
+            createPeerConnection({socketId:socket.id});
             let content = {
                 roomId: data.id,
                 ...UserDetails
@@ -196,9 +220,11 @@ document.getElementById('video-dashboard-submit').addEventListener('click', func
     .then(function (response) {
         return response.json()
     })
-    .then(data=>{
+    .then(async(data)=>{
         console.log(data)
-        startSelfStream();
+        document.getElementById('MymeetingId').value = meetingsdata.meetingId;
+        document.getElementById('MymeetingPass').value = meetingsdata.password;
+        await createPeerConnection({socketId:socket.id})
         let content = {
             roomId: meetingsdata['meetingId'],
             ...UserDetails
@@ -236,29 +262,66 @@ document.getElementById("stop_audio").addEventListener("click", function () {
 });
 
 let firedCandidates = 0;
-async function startSelfStream() {
+async function startSelfStream(data) {
+    console.log("startSelfStream",data);
     document.getElementById('video-join-dashboard').style.display = 'none';
     document.getElementById('meeting_room').style.display = 'block';
-    await navigator.mediaDevices.getUserMedia({
+    return await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false
-    }).then(stream => {
-        store.localStream = stream;
-        console.log("got stream",stream)
-        // store.localStream.getTracks().forEach(track => {
-        //     track.stop();
-        // });
-        const videoContainer = document.getElementById("video_container");
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        video.autoplay = true;
-        video.playsInline = true;
-        videoContainer.appendChild(video);
-    });
+    })
+    // .then(stream => {
+    //     store.localStream = stream;
+    //     console.log("got stream",stream)
+    //     // store.localStream.getTracks().forEach(track => {
+    //     //     track.stop();
+    //     // });
+    //     // const videoContainer = document.getElementById("video_container");
+    //     // const video = document.createElement("video");
+    //     // video.srcObject = stream;
+    //     // video.autoplay = true;
+    //     // video.playsInline = true;
+    //     // videoContainer.appendChild(video);
+    //     appendVideoDiv(data,stream);
+    //     return stream;
+    // });
+}
+function appendVideoDiv(data,stream){
+    console.log("appendVideoDiv",data);
+    const divElement = document.createElement('div');
+    const videoElement = document.createElement('video');
+    const pElement = document.createElement('p');
+    pElement.textContent = data.socketId;
+    pElement.className = "video_title_div";
+    videoElement.srcObject = stream;
+    videoElement.autoplay = true;
+    videoElement.playsInline = true;
+    videoElement.className = "video_player_div";
+    divElement.className = "video_div";
+    divElement.appendChild(pElement);
+    divElement.appendChild(videoElement);
+    document.getElementById('video_container').appendChild(divElement);
+}
+document.getElementById('copyMeetingId').addEventListener('click',(event) =>{event.preventDefault();copyToClipboard(1)})
+document.getElementById('copyMeetingPass').addEventListener('click',(event) =>{event.preventDefault();copyToClipboard(2)})
+function copyToClipboard(data){
+    let text = (data==1)?(document.getElementById('MymeetingId')):(document.getElementById('MymeetingPass'))
+    navigator.clipboard.writeText(text.value);
+    console.log("copied"+text.value);
 }
 async function createPeerConnection(data) {
-    await startSelfStream();
-    console.log("in createPeerConnection",store)
+    console.log("in createPeerConnection",data, connectedUsers)
+    let remoteStream;
+    if(data.socketId!=socket.id){
+        remoteStream = new MediaStream();
+        store.remoteStreams.push(remoteStream);
+        console.log(1, remoteStream);
+    }else{
+        remoteStream = await startSelfStream(data);
+        store.localStream=remoteStream;
+        console.log(2, remoteStream);
+    }
+    appendVideoDiv(data, remoteStream);
     const peerConnection = new RTCPeerConnection({
         iceServers: [
             {
@@ -266,7 +329,13 @@ async function createPeerConnection(data) {
             }
         ]
     });
+    console.log("pushing a new connection for "+data.socketId);
+    peerConnections[data.socketId]=peerConnection;
+    console.log(peerConnections, peerConnection);
     let dataChannel = peerConnection.createDataChannel("chat");
+    peerConnection.ontrack = event => {
+        remoteStream.addTrack(event.track);
+    };
     peerConnection.ondatachannel = (event) => {
         const channel = event.channel;
         channel.onopen = () => {
@@ -281,26 +350,25 @@ async function createPeerConnection(data) {
     };
     peerConnection.onicecandidate = event => {
         if (event.candidate) {
-            socket.emit('webrtc-signalling', {
+            firedCandidates++;
+            let mydata = {
                 candidate: event.candidate,
                 source: data.destination,
                 destination: data.source,
-                type: 'ICE_CANDIDATE'
-            });
-            firedCandidates++;
-            console.log("fired - webrtc-signalling - ICE_CANDIDATE", firedCandidates);
+                type: 'ICE_CANDIDATE',
+                firedCandidates,
+                socketId:socket.id
+            };
+            console.log("fired - webrtc-signalling - ICE_CANDIDATE", firedCandidates, mydata);
+            socket.emit('webrtc-signalling', mydata);
         }
     };
-    let remoteStream = new MediaStream();
-    store.remoteStreams.push(remoteStream);
-    let streamElement = document.createElement('video');
-    streamElement.autoplay = true;
-    streamElement.playsInline = true;
-    streamElement.srcObject = remoteStream;
-    document.getElementById('video_container').appendChild(streamElement);
-    peerConnection.ontrack = event => {
-        remoteStream.addTrack(event.track);
-    };
+
+    // let streamElement = document.createElement('video');
+    // streamElement.autoplay = true;
+    // streamElement.playsInline = true;
+    // streamElement.srcObject = remoteStream;
+    // document.getElementById('video_container').appendChild(streamElement);
     peerConnection.onremovetrack = event => {
         store.localStream.removeTrack(event.track);
     };
@@ -311,12 +379,11 @@ async function createPeerConnection(data) {
     peerConnection.onremovestream = event => {
         store.remoteStreams.splice(store.remoteStreams.indexOf(event.stream), 1);
     };
-    const localStream = store.localStream;console.log("localTracks", localStream, localStream.getTracks());
+    const localStream = store.localStream;
+    console.log("localTracks", localStream);
     for(const track of localStream.getTracks()){
         peerConnection.addTrack(track, localStream);
     }
 
-    peerConnections.push(peerConnection);
-    console.log(peerConnections, peerConnection);
 }
 

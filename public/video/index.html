@@ -38,6 +38,10 @@
         </center>
     </div>
     <div id="meeting_room" style="display:none">
+        <div id="meeting_room_details">
+            <input value="" type="hidden" id="MymeetingId" />
+            <input value="" type="hidden" id="MymeetingPass" />
+        </div>
         <div id="video_container">
             <!-- <video id="video_players" autoplay playsinline></video> -->
         </div>
@@ -49,6 +53,8 @@
             <!-- <button type="button" class="video_toolbar_button" id="pause_recording_video">Pause Recording</button> -->
             <!-- <button type="button" class="video_toolbar_button" id="finish_recording_video">Finish Recoding</button> -->
             <!-- <button type="button" class="video_toolbar_button" id="start_video" disabled>Start Video</button> -->
+            <button type="button" class="video_toolbar_button" id="copyMeetingId">copy meeting id</button>
+            <button type="button" class="video_toolbar_button" id="copyMeetingPass">copy password</button>
             <button type="button" class="video_toolbar_button" id="stop_video">Stop Video</button>
             <!-- <button type="button" class="video_toolbar_button" id="start_audio" disabled>Start Audio</button> -->
             <button type="button" class="video_toolbar_button" id="stop_audio">Stop Audio</button>
@@ -62,14 +68,28 @@
 </body>
 <script src="./index.js" type="module"></script>
 <style>
-    div#video_container {
-     position: absolute;
-     width: 99%;
-     height: calc(100% - 40px);
-     margin: 5px;
-     background: black;
-     border-radius: 15px;
- }
+   div#video_container {
+    position: absolute;
+    width: 99%;
+    height: calc(100% - 40px);
+    margin: 5px;
+    background: black;
+    border-radius: 15px;
+    display: flex;
+    flex-wrap: wrap;
+}
+.video_div p {
+    position: absolute;
+    background: black;
+    margin: 15px;
+    padding: 10px;
+}
+div#meeting_room_details {
+    position: absolute;
+    z-index: 1;
+    bottom: 5%;
+    margin: 10px;
+}
  div#meeting_controls {
      position: absolute;
      bottom: 20px;
@@ -83,11 +103,12 @@
  }
  button.video_toolbar_button {
      border: 2px solid #5ae15a;
-     background-color: transparent;
-     color: #2c9f2c;
      padding: 10px 10px;
      cursor: pointer;
      font-size: 16px;
+     border-color: rgb(25, 136, 25);
+     background-color: #041c0ac4;
+     color: rgb(104, 213, 104);
  }
  button.video_toolbar_button:hover {
      background: green;

@@ -182,6 +182,7 @@ io.on("connection", function(socket){
     socket.on("join-room",user=>{
         console.log("join-room",user)
         socket.join(user.roomId);
+        user['socketId'] = socket.id;
         socket.to(user.roomId).emit("user-joined",user);
     })
 })
