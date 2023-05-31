@@ -1,12 +1,32 @@
 const express= require("express");
 // const { ExpressPeerServer } = require("peer");
 const app = express();
-const server = require("http").Server(app);
-const io = require("socket.io")(server);
+const cors = require("cors");
+const https = require("https");
+const fs = require("fs");
+
+const PORT = process.env.PORT || 5000;
+
+server = https
+	.createServer(
+		// Provide the private and public key to the server by reading each
+		// file's content with the readFileSync() method.
+		{
+			key: fs.readFileSync("key.pem"),
+			cert: fs.readFileSync("cert.pem"),
+		},
+		app
+	);
+const io = require("socket.io")(server,{
+	cors: {
+		origin: "*",
+		methods: ["GET", "POST"]
+	}
+});
 // const peerServer = ExpressPeerServer(server,{debug:true});
 app.use(express.static("public"));
 app.use(express.json());
-
+app.use(cors());
 let availableUsers = [];
 let channelsInfo = {};
 
@@ -188,6 +208,6 @@ io.on("connection", function(socket){
 })
 
 
-server.listen(3000,()=>{
-    console.log("server is running on port 3000");
+server.listen(5000,()=>{
+    console.log("server is running on port 5000");
 });

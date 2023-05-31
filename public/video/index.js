@@ -174,7 +174,7 @@ async function throwWebRtcOffer(data){
 
 document.getElementById("startNewChannel").addEventListener("click", (event) => {
     event.preventDefault();
-    fetch('http://localhost:3000/video/createVideoLink', {
+    fetch('https://vid.dev.us-con-aws-sbx.com:5000/video/createVideoLink', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -185,7 +185,7 @@ document.getElementById("startNewChannel").addEventListener("click", (event) => 
             return data.text()
         })
         .then(data => {
-            // window.location.href = 'http://localhost:3000/video/joinVideoLink/'+data;
+            // window.location.href = 'https://vid.dev.us-con-aws-sbx.com:5000/video/joinVideoLink/'+data;
             localStorage.setItem('channelDetails', data);
             console.log(data)
             data = JSON.parse(atob(data));
@@ -210,7 +210,7 @@ document.getElementById('video-dashboard-submit').addEventListener('click', func
     meetingsdata['email'] = document.getElementById("email").value;
     meetingsdata['meetingId'] = document.getElementById("existingMeetingId").value;
     meetingsdata['password'] = document.getElementById("existingMeetingPassword").value;
-    fetch("http://localhost:3000/video/verifyMeeting", {
+    fetch("https://vid.dev.us-con-aws-sbx.com:5000/video/verifyMeeting", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -322,13 +322,19 @@ async function createPeerConnection(data) {
         console.log(2, remoteStream);
     }
     appendVideoDiv(data, remoteStream);
-    const peerConnection = new RTCPeerConnection({
-        iceServers: [
+    const config = {
+        iceServer: [
             {
                 urls: "stun:stun.l.google.com:19302"
-            }
+            },
+            {
+                url: 'turn:numb.viagenie.ca',
+                credential: 'muazkh',
+                username: 'webrtc@live.com'
+            }            
         ]
-    });
+    };
+    const peerConnection = new RTCPeerConnection(config);
     console.log("pushing a new connection for "+data.socketId);
     peerConnections[data.socketId]=peerConnection;
     console.log(peerConnections, peerConnection);
@@ -345,9 +351,6 @@ async function createPeerConnection(data) {
             console.log(event.data);
         };
     }
-    peerConnection.oniceconnectionstatechange = event => {
-        console.log(event.target.iceConnectionState);
-    };
     peerConnection.onicecandidate = event => {
         if (event.candidate) {
             firedCandidates++;
@@ -379,6 +382,10 @@ async function createPeerConnection(data) {
     peerConnection.onremovestream = event => {
         store.remoteStreams.splice(store.remoteStreams.indexOf(event.stream), 1);
     };
+    peerConnection.oniceconnectionstatechange = event => {
+        console.log(event.target.iceConnectionState);
+    };
+
     const localStream = store.localStream;
     console.log("localTracks", localStream);
     for(const track of localStream.getTracks()){

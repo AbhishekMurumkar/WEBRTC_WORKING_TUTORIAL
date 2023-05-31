@@ -12,6 +12,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "generate-password": "^1.7.0",
+    "nodemon": "^2.0.22",
     "peer": "^1.0.0",
     "socket.io": "^4.6.1",
     "uuid": "^9.0.0"
